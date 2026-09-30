@@ -3,6 +3,23 @@ import argparse
 import pefile
 import copy
 
+# Pinned: PyClone-pefile relies on pefile's private API surface
+# (__data__, __structures__, __unpack_data__, __pack__, format constants).
+# Newer versions have tightened type checks and are refactoring these internals,
+# so we lock to the version this script has been verified against.
+REQUIRED_PEFILE_VERSION = '2024.8.26'
+if getattr(pefile, '__version__', None) != REQUIRED_PEFILE_VERSION:
+    print(
+        '[!] PyClone-pefile requires pefile=={} (found {}). '
+        'Install with: pip install pefile=={}'.format(
+            REQUIRED_PEFILE_VERSION,
+            getattr(pefile, '__version__', 'unknown'),
+            REQUIRED_PEFILE_VERSION,
+        ),
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
 # Read_Only | Initialized_Data
 DEFAULT_CHARACTERISTICS = 0x40000040
 SECTION_NAME = 8
@@ -132,11 +149,12 @@ def _clone_exports(tgt, ref, ref_path, new_section_name = '.rdata2'):
     export_dir.AddressOfFunctions += delta
     export_dir.AddressOfNames += delta
     export_dir.AddressOfNameOrdinals += delta
+    export_dir.Name += delta
 
     # Write in our new export directory
     tgt.set_bytes_at_rva(
-        final_rva, 
-        ref.get_data(ref_export_dir.VirtualAddress, ref_export_dir.Size) + exp_names_blob
+        final_rva,
+        bytes(ref.get_data(ref_export_dir.VirtualAddress, ref_export_dir.Size) + exp_names_blob)
     )
     tgt.set_bytes_at_rva(
         final_rva, 

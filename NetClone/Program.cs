@@ -95,7 +95,7 @@ namespace NetClone
             }
 
             List<string> forwardNames = new List<string>();
-            foreach (ExportFunction export in reference.ExportedFunctions)
+            foreach (ExportFunction export in reference.ExportedFunctions.OrderBy(e => e.Ordinal))
             {
                 if (export.HasName)
                 {
@@ -140,16 +140,22 @@ namespace NetClone
             newExportDir.AddressOfFunctions += (uint)delta;
             newExportDir.AddressOfNames += (uint)delta;
             newExportDir.AddressOfNameOrdinals += (uint)delta;
+            newExportDir.Name += (uint)delta;
 
 
             // Link function addresses to forward names
             uint rawAddressOfFunctions = newExportDir.AddressOfFunctions.RVAtoFileMapping(target.ImageSectionHeaders);
+            int nameIdx = 0;
             for (int i = 0; i < newExportDir.NumberOfFunctions; i++)
             {
-                string forwardName = forwardNames[i];
                 uint offset = (uint)(rawAddressOfFunctions + 4 * i);
+                if (target.Buff.BytesToUInt32(offset) == 0)
+                    continue; // hollow slot (never used)
+
+                string forwardName = forwardNames[nameIdx];
                 target.Buff.SetUInt32(offset, forwardOffset);
                 forwardOffset += (uint)forwardName.Length + 1;
+                nameIdx++;
             }
 
             // Apply delta to export names

@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a2775e1e-c389-4deb-b1c7-e46a210b1748</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>PyClone.py</StartupFile>
+    <StartupFile>PyClone-pefile.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -19,7 +19,8 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="PyClone.py" />
+    <Compile Include="PyClone-pefile.py" />
+    <Compile Include="PyClone-lief.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
