@@ -41,5 +41,32 @@ First versioned release of the fork.
 - **PyClone-pefile `bytes()` wrap** in `set_bytes_at_rva` — fixes a real bug where modern pefile rejects the `bytearray` produced by upstream in-place mutation.
 - Earlier fork commits carried forward: ordinal encoding, `.dll` extension stripping (fixes lookup-failure crashes on Windows 2008 / Windows 7 hosts).
 
+---
+
+## Maintaining this file
+
+When you make a notable change, add an entry under `[Unreleased]` in the appropriate subsection: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`.
+
+When cutting a release:
+
+1. Rename the `## [Unreleased]` heading to `## [X.Y.Z] - YYYY-MM-DD` (today's date).
+2. Add a fresh `## [Unreleased]` (with `_No changes yet._`) back at the top of the log.
+3. Update the comparison links at the bottom of this file:
+   - The `[Unreleased]` link becomes `compare/vX.Y.Z...HEAD`.
+   - Add a new `[X.Y.Z]` link: `compare/v<previous>...vX.Y.Z` (or `releases/tag/vX.Y.Z` for the very first release).
+4. Commit the CHANGELOG changes, then tag, push, and create the GitHub release:
+
+    ```bash
+    git tag -a vX.Y.Z -m "vX.Y.Z - <one-line summary>" HEAD
+    git push origin vX.Y.Z
+    gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <notes-file>
+    ```
+
+Version bump rules (per SemVer):
+
+- **PATCH** (`X.Y.z`): bug fixes, doc updates, dependency pins.
+- **MINOR** (`X.y.0`): new backend / new flags / new build config, backwards compatible.
+- **MAJOR** (`x.0.0`): breaking CLI change, removed backend, incompatible build config.
+
 [Unreleased]: https://github.com/watson0x90/Koppeling/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/watson0x90/Koppeling/releases/tag/v0.1.0
