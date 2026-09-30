@@ -30,6 +30,23 @@ That file pins `pefile` to the version `PyClone-pefile.py` has been verified aga
 
 The `Dyn-PyClone` build configuration invokes `PyClone-pefile.py` by default; if you'd rather use the lief backend, edit the post-build command in `Theif/Theif.vcxproj` to point at `PyClone-lief.py` instead.
 
+### PyClone-lief extras
+
+`PyClone-lief.py` matches the pefile version's core export-cloning behavior and adds a handful of safety and OpSec touches automatically:
+
+- Rejects `x86 ↔ x64` mismatches between target and reference (both cloners previously produced silently corrupt output on mismatch)
+- Prints an info line when the reference has its own forwarded exports, since the clone will chain-forward through them at runtime
+- Strips CodeView / PDB path from the target (attribution leak — PDB paths often contain usernames and build directories)
+- Copies the reference's timestamp onto the output's PE header
+- Zeros the Certificate DataDirectory and drops the Authenticode overlay, so the output reads as cleanly unsigned rather than "signed but broken"
+
+Two optional flags:
+
+- `--verbose` / `-v` — print each cloned entry and its forwarder target
+- `--copy-resources` — graft the reference's icon, version info, and manifest onto the target so the right-click Properties dialog matches the legitimate DLL
+
+Run `python PyClone/PyClone-lief.py --help` for the full argument list.
+
 ## Example
 
 Prepare a hijack scenario with an obviously incorrect DLL
