@@ -81,8 +81,18 @@ namespace NetClone
 
             return section;
         }
-        static void CloneExports(ref PeFile target, PeFile reference, string referencePath, string sectionName)
+        static void CloneExports(ref PeFile target, PeFile reference, string referencePath, string sectionName, bool verbose)
         {
+            // Architecture guard: PE32 (0x10B) vs PE32+ (0x20B). Mismatch produces silent
+            // corruption in the loader; catch it up front instead.
+            if (target.ImageNtHeaders.OptionalHeader.Magic != reference.ImageNtHeaders.OptionalHeader.Magic)
+            {
+                throw new Exception(String.Format(
+                    "Architecture mismatch: target magic 0x{0:X4}, reference magic 0x{1:X4}",
+                    target.ImageNtHeaders.OptionalHeader.Magic,
+                    reference.ImageNtHeaders.OptionalHeader.Magic));
+            }
+
             // Forwards don't typically supply an extension
             referencePath = referencePath.Replace(".dll", "");
 
@@ -144,6 +154,10 @@ namespace NetClone
 
 
             // Link function addresses to forward names
+            if (verbose)
+            {
+                Console.WriteLine("[i] Cloned {0} entries:", forwardNames.Count);
+            }
             uint rawAddressOfFunctions = newExportDir.AddressOfFunctions.RVAtoFileMapping(target.ImageSectionHeaders);
             int nameIdx = 0;
             for (int i = 0; i < newExportDir.NumberOfFunctions; i++)
@@ -155,6 +169,11 @@ namespace NetClone
                 string forwardName = forwardNames[nameIdx];
                 target.Buff.SetUInt32(offset, forwardOffset);
                 forwardOffset += (uint)forwardName.Length + 1;
+                if (verbose)
+                {
+                    uint ordinal = newExportDir.Base + (uint)i;
+                    Console.WriteLine("    ord={0,-5} -> {1}", ordinal, forwardName);
+                }
                 nameIdx++;
             }
 
@@ -169,6 +188,18 @@ namespace NetClone
             // Correct the image size
             target.ImageNtHeaders.OptionalHeader.DataDirectory[0].VirtualAddress = newSection.VirtualAddress;
             target.ImageNtHeaders.OptionalHeader.DataDirectory[0].Size = newSectionSize;
+
+            // OpSec: match the reference's PE header timestamp so the cloned DLL looks like a twin.
+            target.ImageNtHeaders.FileHeader.TimeDateStamp = reference.ImageNtHeaders.FileHeader.TimeDateStamp;
+
+            // OpSec: our edits invalidate any Authenticode signature the target had. Zero the
+            // Certificate DataDirectory (DataDirectory[4]) so the file reads as "unsigned"
+            // rather than "signed but broken" (the latter is a defender signal on its own).
+            // Note: the certificate bytes themselves live in the overlay past the last section,
+            // which PeNet retains when saving. If you need the overlay stripped too, use
+            // PyClone-lief which handles that via lief's Builder config.
+            target.ImageNtHeaders.OptionalHeader.DataDirectory[4].VirtualAddress = 0;
+            target.ImageNtHeaders.OptionalHeader.DataDirectory[4].Size = 0;
 
             return;
         }
@@ -185,6 +216,8 @@ namespace NetClone
             public string ReferencePath { get; set; }
             [Option('s', "section-path", Required = false, HelpText = "New section name", Default = ".rdata2")]
             public string SectionPath { get; set; }
+            [Option('v', "verbose", Required = false, HelpText = "Print each cloned entry and its forward target")]
+            public bool Verbose { get; set; }
         }
 
         static void Main(string[] args)
@@ -205,7 +238,7 @@ namespace NetClone
                PeFile targetPe = new PeFile(o.Target);
                PeFile referencePe = new PeFile(o.Reference);
 
-               CloneExports(ref targetPe, referencePe, o.ReferencePath, o.SectionPath);
+               CloneExports(ref targetPe, referencePe, o.ReferencePath, o.SectionPath, o.Verbose);
 
                targetPe.SaveAs(o.Output);
 

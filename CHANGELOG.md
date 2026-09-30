@@ -6,9 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **NetClone** — architecture-mismatch guard (PE32 ↔ PE32+), automatic timestamp normalization to the reference, automatic Certificate DataDirectory zeroing, and a `-v` / `--verbose` flag listing each cloned entry with its ordinal and forwarder target. Matches PyClone-lief's low-cost safety and OpSec behaviors. PDB stripping, Authenticode overlay stripping, `--copy-resources`, and forwarder-chain detection remain PyClone-lief-only for now.
+
 ### Changed
 
-- README **Example** section expanded: side-by-side conversion commands for NetClone, PyClone-pefile, and PyClone-lief; explanation of `-p` / `--reference-path`; PyClone-lief extras (verbose output, `--copy-resources` effect, chain-forward notice, architecture-mismatch guard).
+- README **Example** section expanded: side-by-side conversion commands for NetClone, PyClone-pefile, and PyClone-lief; explanation of `-p` / `--reference-path`; shared safety/OpSec features called out separately from PyClone-lief-only ones.
 
 ## [0.1.0] - 2026-09-30
 
