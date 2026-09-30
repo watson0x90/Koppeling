@@ -66,11 +66,73 @@ Executing in the current configuration should result in an error
 "Entry Point Not Found"
 ```
 
-Convert kernel32 to proxy functionality for wkscli
-```
-> NetClone.exe --target C:\windows\system32\kernel32.dll --reference C:\windows\system32\wkscli.dll --output wkscli.dll
-[+] Done.
+Convert kernel32 to proxy functionality for wkscli. Any of the three cloners work — they produce equivalent export tables. All three commands below graft wkscli's 29 exports onto a copy of kernel32 as forwarders back to the real wkscli.
 
+**NetClone (C#)**
+```
+> NetClone.exe --target C:\windows\system32\kernel32.dll --reference C:\windows\system32\wkscli.dll --reference-path wkscli --output wkscli.dll
+[+] Done.
+```
+
+**PyClone-pefile (Python, pefile backend)**
+```
+> python PyClone\PyClone-pefile.py C:\windows\system32\kernel32.dll C:\windows\system32\wkscli.dll -p wkscli -o wkscli.dll
+[+] Loaded files
+
+[+] Done: wkscli.dll
+```
+
+**PyClone-lief (Python, lief backend)**
+```
+> python PyClone\PyClone-lief.py C:\windows\system32\kernel32.dll C:\windows\system32\wkscli.dll -p wkscli -o wkscli.dll
+[+] Loaded files
+
+[+] Done: wkscli.dll
+```
+
+The `-p wkscli` (`--reference-path wkscli` on NetClone) sets the forwarder-string prefix. If you omit it, the tools use the value passed as `--reference` verbatim, so absolute paths end up embedded in the export table as awkward forwarders like `C:\windows\system32\wkscli.NetAddAlternateComputerName` instead of `wkscli.NetAddAlternateComputerName`.
+
+With the converted DLL in place, `whoami.exe` now finds a usable `wkscli`:
+```
 > whoami.exe
 COMPUTER\User
 ```
+
+### PyClone-lief extras
+
+**Verbose mode** — list each cloned entry and its forwarder target:
+```
+> python PyClone\PyClone-lief.py C:\windows\system32\kernel32.dll C:\windows\system32\wkscli.dll -p wkscli -o wkscli.dll -v
+[+] Loaded files
+[i] Cloned 29 entries:
+    ord=1     NetAddAlternateComputerName              -> wkscli.NetAddAlternateComputerName
+    ord=2     NetEnumerateComputerNames                -> wkscli.NetEnumerateComputerNames
+    ord=3     NetGetJoinInformation                    -> wkscli.NetGetJoinInformation
+    ... (26 more)
+
+[+] Done: wkscli.dll
+```
+
+**Copy resources** — graft the reference's icon, version info, and manifest onto the target so Explorer's Properties dialog matches the legitimate DLL:
+```
+> python PyClone\PyClone-lief.py C:\windows\system32\kernel32.dll C:\windows\system32\wkscli.dll -p wkscli -o wkscli.dll --copy-resources
+```
+After this, right-clicking `wkscli.dll` and choosing Properties shows `FileDescription = "Workstation Service Client DLL"` and `OriginalFilename = "WKSCLI.DLL"` — the same values a legitimate `wkscli.dll` would show — instead of kernel32's version metadata.
+
+**Chain-forward notice** — when the reference has its own forwarded exports, the clone will chain-forward through them at runtime. PyClone-lief flags this on stderr so you know:
+```
+> python PyClone\PyClone-lief.py C:\windows\system32\wkscli.dll C:\windows\system32\kernel32.dll -p kernel32 -o kernel32.dll
+[+] Loaded files
+[i] Reference has 211 existing forwarder(s); cloned exports will chain through them at runtime.
+
+[+] Done: kernel32.dll
+```
+
+**Architecture guard** — silently corrupt output on 32/64-bit mismatch was possible in the original tools; PyClone-lief errors out cleanly instead:
+```
+> python PyClone\PyClone-lief.py C:\Windows\SysWOW64\wkscli.dll C:\Windows\System32\kernel32.dll -p kernel32
+[+] Loaded files
+[!] Architecture mismatch: target is PE32, reference is PE32_PLUS
+```
+
+Run `python PyClone\PyClone-lief.py --help` (or `python PyClone\PyClone-pefile.py --help`, or `NetClone.exe --help`) for the full argument list.

@@ -6,7 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-_No changes yet._
+### Changed
+
+- README **Example** section expanded: side-by-side conversion commands for NetClone, PyClone-pefile, and PyClone-lief; explanation of `-p` / `--reference-path`; PyClone-lief extras (verbose output, `--copy-resources` effect, chain-forward notice, architecture-mismatch guard).
 
 ## [0.1.0] - 2026-09-30
 
